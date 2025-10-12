@@ -349,7 +349,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 📧 Contact
 
-Your Name - [@your_twitter](https://twitter.com/your_twitter) - email@example.com
+Your Name - [@vchaitanyachai](https://twitter.com/vchaitanyachai) - vchaitanya@chowdari.in
 
 Project Link: [https://github.com/vchaitanyachowdari/nook-link](https://github.com/vchaitanyachowdari/nook-link)
 
@@ -357,16 +357,14 @@ Project Link: [https://github.com/vchaitanyachowdari/nook-link](https://github.c
 
 ## 🙏 Acknowledgments
 
-- [Resource 1](https://example.com)
-- [Resource 2](https://example.com)
-- [Inspiration](https://example.com)
-- [Tutorial](https://example.com)
+- [Resource 1](https://chowdari.in)
+- [Inspiration]([https://portfolio-inspiration.com](https://portfolio-inspiration-opal.vercel.app))
 
 ---
 
 <div align="center">
 
-Made with ❤️ by [Your Name](https://github.com/vchaitanyachowdari)
+Made with ❤️ by [V Chaitanya Chowdari](https://chowdari.in)
 
 **[⬆ back to top](#nook-link)**
 
