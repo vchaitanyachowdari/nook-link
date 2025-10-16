@@ -19,7 +19,11 @@ export type Database = {
           category: string | null
           created_at: string
           description: string | null
+          folder: string | null
           id: string
+          is_archived: boolean | null
+          is_favorite: boolean | null
+          notes: string | null
           reading: boolean
           tags: string[]
           title: string
@@ -31,7 +35,11 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
+          folder?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_favorite?: boolean | null
+          notes?: string | null
           reading?: boolean
           tags?: string[]
           title: string
@@ -43,7 +51,11 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
+          folder?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_favorite?: boolean | null
+          notes?: string | null
           reading?: boolean
           tags?: string[]
           title?: string
@@ -63,7 +75,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           created_at: string
+          display_name: string | null
           email: string
           id: string
           phone_number: string | null
@@ -71,7 +86,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
+          display_name?: string | null
           email: string
           id?: string
           phone_number?: string | null
@@ -79,7 +97,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
+          display_name?: string | null
           email?: string
           id?: string
           phone_number?: string | null

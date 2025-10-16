@@ -39,23 +39,31 @@ export const Layout = ({ children, userEmail }: LayoutProps) => {
 
             <nav className="flex items-center gap-4">
               <Link to="/">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="relative group">
                   <List className="h-4 w-4 mr-2" />
                   All Bookmarks
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
                 </Button>
               </Link>
               <Link to="/reading-list">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="relative group">
                   <BookmarkPlus className="h-4 w-4 mr-2" />
                   Reading List
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
+                </Button>
+              </Link>
+              <Link to="/profile">
+                <Button variant="ghost" size="sm" className="relative group">
+                  <User className="h-4 w-4 mr-2" />
+                  Profile
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
                 </Button>
               </Link>
               
               {userEmail && (
                 <div className="flex items-center gap-3 ml-4 pl-4 border-l">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <User className="h-4 w-4" />
-                    {userEmail}
+                    <span className="max-w-[150px] truncate">{userEmail}</span>
                   </div>
                   <Button variant="outline" size="sm" onClick={handleLogout}>
                     <LogOut className="h-4 w-4 mr-2" />
