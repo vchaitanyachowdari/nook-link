@@ -22,8 +22,43 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const whapiToken = Deno.env.get('WHAPI_API_TOKEN')!;
 
+    // Verify webhook signature for security
+    const signature = req.headers.get('x-webhook-signature') || req.headers.get('x-whapi-signature');
+    const rawBody = await req.text();
+    
+    if (signature) {
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(whapiToken),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      
+      const expectedSignature = await crypto.subtle.sign(
+        'HMAC',
+        key,
+        encoder.encode(rawBody)
+      );
+      
+      const expectedHex = Array.from(new Uint8Array(expectedSignature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      if (signature !== expectedHex) {
+        console.error('Invalid webhook signature');
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      console.warn('No webhook signature provided - request may be unauthorized');
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const payload = await req.json();
+    const payload = JSON.parse(rawBody);
     
     console.log('Received webhook payload:', JSON.stringify(payload, null, 2));
 
