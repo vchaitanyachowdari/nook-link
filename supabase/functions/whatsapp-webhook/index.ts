@@ -122,7 +122,8 @@ async function processCommand(text: string, userId: string, supabase: any): Prom
       .order('created_at', { ascending: false });
 
     if (error) {
-      return '❌ Error fetching reading list: ' + error.message;
+      console.error('Error fetching reading list:', error);
+      return '❌ Unable to fetch your reading list. Please try again later.';
     }
 
     if (!bookmarks || bookmarks.length === 0) {
@@ -155,7 +156,8 @@ async function processCommand(text: string, userId: string, supabase: any): Prom
       .limit(10);
 
     if (error) {
-      return '❌ Error fetching bookmarks: ' + error.message;
+      console.error('Error fetching bookmarks:', error);
+      return '❌ Unable to fetch your bookmarks. Please try again later.';
     }
 
     if (!bookmarks || bookmarks.length === 0) {
@@ -200,7 +202,8 @@ async function processCommand(text: string, userId: string, supabase: any): Prom
       });
 
     if (error) {
-      return '❌ Error adding bookmark: ' + error.message;
+      console.error('Error adding bookmark:', error);
+      return '❌ Failed to add bookmark. Please check your input and try again.';
     }
 
     return '✅ Bookmark added successfully!\n\n' +
@@ -222,7 +225,8 @@ async function processCommand(text: string, userId: string, supabase: any): Prom
       .limit(5);
 
     if (error) {
-      return '❌ Error searching bookmarks: ' + error.message;
+      console.error('Error searching bookmarks:', error);
+      return '❌ Unable to search bookmarks. Please try again later.';
     }
 
     if (!bookmarks || bookmarks.length === 0) {

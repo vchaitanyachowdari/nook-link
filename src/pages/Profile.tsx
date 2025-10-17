@@ -10,6 +10,13 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const profileSchema = z.object({
+  display_name: z.string().trim().max(100, "Name must be less than 100 characters").optional().or(z.literal("")),
+  bio: z.string().trim().max(500, "Bio must be less than 500 characters").optional().or(z.literal("")),
+  phone_number: z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number format (use +[country][number])").optional().or(z.literal(""))
+});
 
 export default function Profile() {
   const [user, setUser] = useState<any>(null);
@@ -42,7 +49,17 @@ export default function Profile() {
         .single();
 
       if (profileData) {
-        setProfile(profileData);
+        // Get signed URL for avatar if it exists
+        let avatarUrl = "";
+        if (profileData.avatar_url && !profileData.avatar_url.startsWith("http")) {
+          const { data: signedUrlData } = await supabase.storage
+            .from("avatars")
+            .createSignedUrl(profileData.avatar_url, 3600); // 1 hour expiry
+          
+          avatarUrl = signedUrlData?.signedUrl || "";
+        }
+
+        setProfile({ ...profileData, avatar_url: avatarUrl });
         setDisplayName(profileData.display_name || "");
         setBio(profileData.bio || "");
         setPhoneNumber(profileData.phone_number || "");
@@ -70,18 +87,20 @@ export default function Profile() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(fileName);
-
+      // Store the path, not public URL since bucket is now private
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: fileName })
         .eq("user_id", user.id);
 
       if (updateError) throw updateError;
 
-      setProfile({ ...profile, avatar_url: publicUrl });
+      // Get signed URL for display
+      const { data: signedUrlData } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(fileName, 3600);
+
+      setProfile({ ...profile, avatar_url: signedUrlData?.signedUrl || "" });
       toast.success("Avatar updated!");
     } catch (error: any) {
       toast.error(error.message);
@@ -93,12 +112,27 @@ export default function Profile() {
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
+      
+      // Validate inputs
+      const validationResult = profileSchema.safeParse({
+        display_name: displayName || "",
+        bio: bio || "",
+        phone_number: phoneNumber || ""
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from("profiles")
         .update({
-          display_name: displayName,
-          bio: bio,
-          phone_number: phoneNumber,
+          display_name: displayName.trim(),
+          bio: bio.trim(),
+          phone_number: phoneNumber.trim(),
         })
         .eq("user_id", user.id);
 
