@@ -186,9 +186,26 @@ async function processCommand(text: string, userId: string, supabase: any): Prom
     }
 
     const url = parts[0];
-    const title = parts[1];
-    const tags = parts.length > 2 ? parts[2].split(',').map(t => t.trim()) : ['general'];
-    const description = parts.length > 3 ? parts[3] : null;
+    const title = parts[1].substring(0, 200);
+    
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch {
+      return '❌ Invalid URL format. Please provide a valid URL.';
+    }
+    
+    // Validate title
+    if (!title.trim()) {
+      return '❌ Title cannot be empty.';
+    }
+    
+    // Validate and sanitize tags
+    const tags = parts.length > 2 
+      ? parts[2].split(',').map(t => t.trim()).filter(t => t.length > 0 && t.length <= 50).slice(0, 10)
+      : ['general'];
+    
+    const description = parts.length > 3 ? parts[3].substring(0, 1000) : null;
 
     const { error } = await supabase
       .from('bookmarks')
@@ -216,11 +233,17 @@ async function processCommand(text: string, userId: string, supabase: any): Prom
   if (text.startsWith('search ')) {
     const query = text.substring(7).trim();
     
+    // Validate and sanitize input
+    const sanitizedQuery = query.substring(0, 200);
+    if (!sanitizedQuery) {
+      return '❌ Please provide a search term.';
+    }
+    
     const { data: bookmarks, error } = await supabase
       .from('bookmarks')
       .select('*')
       .eq('user_id', userId)
-      .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
+      .or(`title.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%`)
       .order('created_at', { ascending: false })
       .limit(5);
 
