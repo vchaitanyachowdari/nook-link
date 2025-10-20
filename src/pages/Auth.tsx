@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,15 @@ import { BookmarkPlus } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Auth() {
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  
+  const telegramId = searchParams.get('telegram_id');
+  const telegramUsername = searchParams.get('username');
 
   useEffect(() => {
     // Check if already logged in
@@ -30,16 +34,35 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
-        toast.success("Logged in successfully!");
+        
+        // If linking from Telegram, update profile
+        if (telegramId && data.user) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              telegram_id: telegramId,
+              telegram_username: telegramUsername,
+            })
+            .eq('user_id', data.user.id);
+
+          if (updateError) {
+            console.error('Error linking Telegram:', updateError);
+            toast.error('Logged in but failed to link Telegram account');
+          } else {
+            toast.success('Logged in and Telegram linked! You can now use the bot.');
+          }
+        } else {
+          toast.success("Logged in successfully!");
+        }
         navigate("/");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -48,7 +71,23 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        toast.success("Account created successfully!");
+        
+        // If linking from Telegram, update profile
+        if (telegramId && data.user) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              telegram_id: telegramId,
+              telegram_username: telegramUsername,
+            })
+            .eq('user_id', data.user.id);
+
+          if (updateError) {
+            console.error('Error linking Telegram:', updateError);
+          }
+        }
+        
+        toast.success("Account created! You can now use the Telegram bot.");
         navigate("/");
       }
     } catch (error: any) {
@@ -86,7 +125,10 @@ export default function Auth() {
             Bookmarks Manager
           </h1>
           <p className="text-muted-foreground mt-2">
-            {isLogin ? "Welcome back!" : "Create your account"}
+            {telegramId 
+              ? `Link your Telegram (@${telegramUsername || 'user'}) to continue`
+              : isLogin ? "Welcome back!" : "Create your account"
+            }
           </p>
         </div>
 
