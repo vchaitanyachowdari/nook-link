@@ -82,6 +82,12 @@ export type Database = {
           email: string
           id: string
           phone_number: string | null
+          telegram_auth_code: string | null
+          telegram_auth_pending: boolean | null
+          telegram_first_name: string | null
+          telegram_id: string | null
+          telegram_last_name: string | null
+          telegram_username: string | null
           updated_at: string
           user_id: string
         }
@@ -93,6 +99,12 @@ export type Database = {
           email: string
           id?: string
           phone_number?: string | null
+          telegram_auth_code?: string | null
+          telegram_auth_pending?: boolean | null
+          telegram_first_name?: string | null
+          telegram_id?: string | null
+          telegram_last_name?: string | null
+          telegram_username?: string | null
           updated_at?: string
           user_id: string
         }
@@ -104,6 +116,12 @@ export type Database = {
           email?: string
           id?: string
           phone_number?: string | null
+          telegram_auth_code?: string | null
+          telegram_auth_pending?: boolean | null
+          telegram_first_name?: string | null
+          telegram_id?: string | null
+          telegram_last_name?: string | null
+          telegram_username?: string | null
           updated_at?: string
           user_id?: string
         }
