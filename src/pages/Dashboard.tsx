@@ -36,6 +36,10 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [readingOnly, setReadingOnly] = useState(false);
+  const [favoriteOnly, setFavoriteOnly] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [sortBy, setSortBy] = useState("created_at_desc");
+  const [selectedBookmarks, setSelectedBookmarks] = useState<Set<string>>(new Set());
   const [allTags, setAllTags] = useState<string[]>([]);
 
   const navigate = useNavigate();
@@ -71,7 +75,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     filterBookmarks();
-  }, [bookmarks, searchQuery, selectedTags, readingOnly]);
+  }, [bookmarks, searchQuery, selectedTags, readingOnly, favoriteOnly, showArchived, sortBy]);
 
   const fetchBookmarks = async () => {
     try {
@@ -101,13 +105,19 @@ export default function Dashboard() {
   const filterBookmarks = () => {
     let filtered = [...bookmarks];
 
+    // Filter archived
+    if (!showArchived) {
+      filtered = filtered.filter((b) => !b.is_archived);
+    }
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (b) =>
           b.title.toLowerCase().includes(query) ||
           b.description?.toLowerCase().includes(query) ||
-          b.url.toLowerCase().includes(query)
+          b.url.toLowerCase().includes(query) ||
+          b.tags.some(tag => tag.toLowerCase().includes(query))
       );
     }
 
@@ -120,6 +130,28 @@ export default function Dashboard() {
     if (readingOnly) {
       filtered = filtered.filter((b) => b.reading);
     }
+
+    if (favoriteOnly) {
+      filtered = filtered.filter((b) => b.is_favorite);
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "created_at_desc":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "created_at_asc":
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case "title_asc":
+          return a.title.localeCompare(b.title);
+        case "title_desc":
+          return b.title.localeCompare(a.title);
+        case "updated_at_desc":
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        default:
+          return 0;
+      }
+    });
 
     setFilteredBookmarks(filtered);
   };
@@ -193,6 +225,109 @@ export default function Dashboard() {
     }
   };
 
+  const handleToggleFavorite = async (id: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("bookmarks")
+        .update({ is_favorite: !currentStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success(
+        currentStatus ? "Removed from favorites" : "Added to favorites"
+      );
+      fetchBookmarks();
+    } catch (error: any) {
+      toast.error("Error updating bookmark");
+    }
+  };
+
+  const handleToggleArchive = async (id: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("bookmarks")
+        .update({ is_archived: !currentStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success(
+        currentStatus ? "Unarchived bookmark" : "Archived bookmark"
+      );
+      fetchBookmarks();
+    } catch (error: any) {
+      toast.error("Error updating bookmark");
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    try {
+      const ids = Array.from(selectedBookmarks);
+      const { error } = await supabase
+        .from("bookmarks")
+        .update({ is_archived: true })
+        .in("id", ids);
+
+      if (error) throw error;
+      toast.success(`Archived ${ids.length} bookmark(s)`);
+      setSelectedBookmarks(new Set());
+      fetchBookmarks();
+    } catch (error: any) {
+      toast.error("Error archiving bookmarks");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      const ids = Array.from(selectedBookmarks);
+      const { error } = await supabase
+        .from("bookmarks")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+      toast.success(`Deleted ${ids.length} bookmark(s)`);
+      setSelectedBookmarks(new Set());
+      fetchBookmarks();
+    } catch (error: any) {
+      toast.error("Error deleting bookmarks");
+    }
+  };
+
+  const handleBulkAddToReading = async () => {
+    try {
+      const ids = Array.from(selectedBookmarks);
+      const { error } = await supabase
+        .from("bookmarks")
+        .update({ reading: true })
+        .in("id", ids);
+
+      if (error) throw error;
+      toast.success(`Added ${ids.length} bookmark(s) to reading list`);
+      setSelectedBookmarks(new Set());
+      fetchBookmarks();
+    } catch (error: any) {
+      toast.error("Error updating bookmarks");
+    }
+  };
+
+  const toggleSelectBookmark = (id: string) => {
+    const newSelected = new Set(selectedBookmarks);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedBookmarks(newSelected);
+  };
+
+  const selectAll = () => {
+    if (selectedBookmarks.size === filteredBookmarks.length) {
+      setSelectedBookmarks(new Set());
+    } else {
+      setSelectedBookmarks(new Set(filteredBookmarks.map(b => b.id)));
+    }
+  };
+
   const confirmDelete = (id: string) => {
     setDeletingId(id);
     setDeleteDialogOpen(true);
@@ -215,17 +350,33 @@ export default function Dashboard() {
     <Layout userEmail={user?.email}>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-3xl font-bold">All Bookmarks</h2>
             <p className="text-muted-foreground mt-1">
               {filteredBookmarks.length} bookmark{filteredBookmarks.length !== 1 ? "s" : ""} found
+              {selectedBookmarks.size > 0 && ` (${selectedBookmarks.size} selected)`}
             </p>
           </div>
-          <Button onClick={() => { setEditingBookmark(null); setDialogOpen(true); }} size="lg">
-            <Plus className="h-5 w-5 mr-2" />
-            Add New Bookmark
-          </Button>
+          <div className="flex gap-2">
+            {selectedBookmarks.size > 0 && (
+              <>
+                <Button onClick={handleBulkAddToReading} variant="outline" size="sm">
+                  Add to Reading
+                </Button>
+                <Button onClick={handleBulkArchive} variant="outline" size="sm">
+                  Archive Selected
+                </Button>
+                <Button onClick={handleBulkDelete} variant="destructive" size="sm">
+                  Delete Selected
+                </Button>
+              </>
+            )}
+            <Button onClick={() => { setEditingBookmark(null); setDialogOpen(true); }} size="lg">
+              <Plus className="h-5 w-5 mr-2" />
+              Add Bookmark
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -235,60 +386,118 @@ export default function Dashboard() {
             <h3 className="font-semibold">Filters & Search</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="search">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search by title, URL, or description..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="search">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="search"
+                    placeholder="Search by title, URL, description, or tags..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sort">Sort By</Label>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger id="sort">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created_at_desc">Newest First</SelectItem>
+                    <SelectItem value="created_at_asc">Oldest First</SelectItem>
+                    <SelectItem value="updated_at_desc">Recently Updated</SelectItem>
+                    <SelectItem value="title_asc">Title (A-Z)</SelectItem>
+                    <SelectItem value="title_desc">Title (Z-A)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tags">Filter by Tags</Label>
-              <Select
-                value={selectedTags[0] || ""}
-                onValueChange={(value) => {
-                  if (value === "all") {
-                    setSelectedTags([]);
-                  } else {
-                    setSelectedTags([value]);
-                  }
-                }}
-              >
-                <SelectTrigger id="tags">
-                  <SelectValue placeholder="All tags" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All tags</SelectItem>
-                  {allTags.map((tag) => (
-                    <SelectItem key={tag} value={tag}>
-                      {tag}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tags">Filter by Tags</Label>
+                <Select
+                  value={selectedTags[0] || ""}
+                  onValueChange={(value) => {
+                    if (value === "all") {
+                      setSelectedTags([]);
+                    } else {
+                      setSelectedTags([value]);
+                    }
+                  }}
+                >
+                  <SelectTrigger id="tags">
+                    <SelectValue placeholder="All tags" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All tags</SelectItem>
+                    {allTags.map((tag) => (
+                      <SelectItem key={tag} value={tag}>
+                        {tag}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="flex items-end">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="reading"
-                  checked={readingOnly}
-                  onCheckedChange={(checked) => setReadingOnly(checked as boolean)}
-                />
-                <Label htmlFor="reading" className="cursor-pointer flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  Reading List Only
-                </Label>
+              <div className="flex items-end">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="reading"
+                    checked={readingOnly}
+                    onCheckedChange={(checked) => setReadingOnly(checked as boolean)}
+                  />
+                  <Label htmlFor="reading" className="cursor-pointer flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Reading List
+                  </Label>
+                </div>
+              </div>
+
+              <div className="flex items-end">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="favorite"
+                    checked={favoriteOnly}
+                    onCheckedChange={(checked) => setFavoriteOnly(checked as boolean)}
+                  />
+                  <Label htmlFor="favorite" className="cursor-pointer">
+                    ⭐ Favorites Only
+                  </Label>
+                </div>
+              </div>
+
+              <div className="flex items-end">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="archived"
+                    checked={showArchived}
+                    onCheckedChange={(checked) => setShowArchived(checked as boolean)}
+                  />
+                  <Label htmlFor="archived" className="cursor-pointer">
+                    📦 Show Archived
+                  </Label>
+                </div>
               </div>
             </div>
+
+            {filteredBookmarks.length > 0 && (
+              <div className="flex items-center justify-between pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAll}
+                >
+                  {selectedBookmarks.size === filteredBookmarks.length ? "Deselect All" : "Select All"}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -314,16 +523,26 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4">
             {filteredBookmarks.map((bookmark) => (
-              <BookmarkCard
-                key={bookmark.id}
-                bookmark={bookmark}
-                onEdit={(b) => {
-                  setEditingBookmark(b);
-                  setDialogOpen(true);
-                }}
-                onDelete={confirmDelete}
-                onToggleReading={handleToggleReading}
-              />
+              <div key={bookmark.id} className="flex items-start gap-3">
+                <Checkbox
+                  checked={selectedBookmarks.has(bookmark.id)}
+                  onCheckedChange={() => toggleSelectBookmark(bookmark.id)}
+                  className="mt-6"
+                />
+                <div className="flex-1">
+                  <BookmarkCard
+                    bookmark={bookmark}
+                    onEdit={(b) => {
+                      setEditingBookmark(b);
+                      setDialogOpen(true);
+                    }}
+                    onDelete={confirmDelete}
+                    onToggleReading={handleToggleReading}
+                    onToggleFavorite={handleToggleFavorite}
+                    onToggleArchive={handleToggleArchive}
+                  />
+                </div>
+              </div>
             ))}
           </div>
         )}

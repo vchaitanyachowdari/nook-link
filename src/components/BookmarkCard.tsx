@@ -1,8 +1,7 @@
-import { ExternalLink, Copy, Edit, Trash2, BookmarkCheck } from "lucide-react";
-import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { toast } from "sonner";
+import { ExternalLink, Edit2, Trash2, BookOpen, BookOpenCheck, Star, Archive, ArchiveRestore } from "lucide-react";
 
 export interface Bookmark {
   id: string;
@@ -11,8 +10,11 @@ export interface Bookmark {
   description?: string;
   tags: string[];
   reading: boolean;
+  is_favorite?: boolean;
+  is_archived?: boolean;
   category?: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface BookmarkCardProps {
@@ -20,41 +22,42 @@ interface BookmarkCardProps {
   onEdit: (bookmark: Bookmark) => void;
   onDelete: (id: string) => void;
   onToggleReading: (id: string, currentStatus: boolean) => void;
+  onToggleFavorite?: (id: string, currentStatus: boolean) => void;
+  onToggleArchive?: (id: string, currentStatus: boolean) => void;
 }
 
-const TAG_COLORS = [
-  "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-  "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-  "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-  "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
-];
-
-const getTagColor = (tag: string) => {
-  const index = tag.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return TAG_COLORS[index % TAG_COLORS.length];
-};
-
-export const BookmarkCard = ({ bookmark, onEdit, onDelete, onToggleReading }: BookmarkCardProps) => {
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(bookmark.url);
-    toast.success("URL copied to clipboard!");
-  };
-
+export const BookmarkCard = ({ 
+  bookmark, 
+  onEdit, 
+  onDelete, 
+  onToggleReading,
+  onToggleFavorite,
+  onToggleArchive
+}: BookmarkCardProps) => {
   return (
-    <Card className="p-6 hover:shadow-md transition-all duration-200 bg-gradient-to-br from-card to-card/50">
+    <Card className={`p-6 hover:shadow-md transition-shadow ${bookmark.is_archived ? 'opacity-60 bg-muted/30' : ''}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <a
-              href={bookmark.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-lg hover:text-primary transition-colors truncate"
-            >
-              {bookmark.title}
-            </a>
-            <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <h3 className="font-semibold text-lg">{bookmark.title}</h3>
+            {bookmark.is_favorite && <span className="text-yellow-500 text-xl">⭐</span>}
+            {bookmark.is_archived && (
+              <Badge variant="secondary" className="shrink-0">
+                <Archive className="h-3 w-3 mr-1" />
+                Archived
+              </Badge>
+            )}
+            {bookmark.reading && (
+              <Badge variant="secondary" className="shrink-0">
+                <BookOpen className="h-3 w-3 mr-1" />
+                Reading
+              </Badge>
+            )}
+            {bookmark.category && (
+              <Badge variant="outline" className="shrink-0">
+                {bookmark.category}
+              </Badge>
+            )}
           </div>
 
           {bookmark.description && (
@@ -63,43 +66,80 @@ export const BookmarkCard = ({ bookmark, onEdit, onDelete, onToggleReading }: Bo
             </p>
           )}
 
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs text-muted-foreground font-mono truncate max-w-xs">
-              {bookmark.url}
-            </span>
-            <Button variant="ghost" size="sm" onClick={handleCopyUrl} className="h-6 w-6 p-0">
-              <Copy className="h-3 w-3" />
-            </Button>
-          </div>
+          <a
+            href={bookmark.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-primary hover:underline mb-3 block truncate"
+          >
+            {bookmark.url}
+          </a>
 
           <div className="flex flex-wrap gap-2">
             {bookmark.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className={getTagColor(tag)}>
+              <Badge key={tag} variant="secondary">
                 {tag}
               </Badge>
             ))}
-            {bookmark.category && (
-              <Badge variant="outline" className="border-primary/30">
-                {bookmark.category}
-              </Badge>
-            )}
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex gap-2 shrink-0 flex-wrap">
           <Button
-            variant={bookmark.reading ? "default" : "outline"}
+            variant="ghost"
             size="sm"
             onClick={() => onToggleReading(bookmark.id, bookmark.reading)}
-            className="w-full"
+            title={bookmark.reading ? "Remove from reading list" : "Add to reading list"}
           >
-            <BookmarkCheck className="h-4 w-4" />
+            {bookmark.reading ? (
+              <BookOpenCheck className="h-4 w-4" />
+            ) : (
+              <BookOpen className="h-4 w-4" />
+            )}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => onEdit(bookmark)}>
-            <Edit className="h-4 w-4" />
+          {onToggleFavorite && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onToggleFavorite(bookmark.id, bookmark.is_favorite || false)}
+              title={bookmark.is_favorite ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Star className={`h-4 w-4 ${bookmark.is_favorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+            </Button>
+          )}
+          {onToggleArchive && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onToggleArchive(bookmark.id, bookmark.is_archived || false)}
+              title={bookmark.is_archived ? "Unarchive" : "Archive"}
+            >
+              {bookmark.is_archived ? (
+                <ArchiveRestore className="h-4 w-4" />
+              ) : (
+                <Archive className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.open(bookmark.url, "_blank")}
+            title="Open link"
+          >
+            <ExternalLink className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => onDelete(bookmark.id)}>
-            <Trash2 className="h-4 w-4 text-destructive" />
+          <Button variant="ghost" size="sm" onClick={() => onEdit(bookmark)} title="Edit">
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(bookmark.id)}
+            className="text-destructive hover:text-destructive"
+            title="Delete"
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
