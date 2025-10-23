@@ -2,15 +2,16 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Layout } from "@/components/Layout";
-import { BookmarkCard, Bookmark } from "@/components/BookmarkCard";
+import { AnimatedBookmarkCard, Bookmark } from "@/components/AnimatedBookmarkCard";
 import { BookmarkDialog } from "@/components/BookmarkDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Filter, BookOpen } from "lucide-react";
+import { Plus, Search, Filter, BookOpen, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -348,42 +349,82 @@ export default function Dashboard() {
 
   return (
     <Layout userEmail={user?.email}>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
+      {/* Hero Background */}
+      <div className="fixed inset-0 -z-10 bg-gradient-mesh opacity-30 pointer-events-none" />
+      
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="space-y-6"
+      >
+        {/* Enhanced Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex items-center justify-between flex-wrap gap-4"
+        >
           <div>
-            <h2 className="text-3xl font-bold">All Bookmarks</h2>
-            <p className="text-muted-foreground mt-1">
+            <h2 className="text-4xl font-bold text-gradient-primary mb-2 flex items-center gap-3">
+              <Sparkles className="h-8 w-8 text-primary" />
+              All Bookmarks
+            </h2>
+            <p className="text-muted-foreground mt-1 text-lg">
               {filteredBookmarks.length} bookmark{filteredBookmarks.length !== 1 ? "s" : ""} found
-              {selectedBookmarks.size > 0 && ` (${selectedBookmarks.size} selected)`}
+              {selectedBookmarks.size > 0 && ` • ${selectedBookmarks.size} selected`}
             </p>
           </div>
-          <div className="flex gap-2">
-            {selectedBookmarks.size > 0 && (
-              <>
-                <Button onClick={handleBulkAddToReading} variant="outline" size="sm">
-                  Add to Reading
-                </Button>
-                <Button onClick={handleBulkArchive} variant="outline" size="sm">
-                  Archive Selected
-                </Button>
-                <Button onClick={handleBulkDelete} variant="destructive" size="sm">
-                  Delete Selected
-                </Button>
-              </>
-            )}
-            <Button onClick={() => { setEditingBookmark(null); setDialogOpen(true); }} size="lg">
-              <Plus className="h-5 w-5 mr-2" />
-              Add Bookmark
-            </Button>
+          <div className="flex gap-2 flex-wrap">
+            <AnimatePresence mode="wait">
+              {selectedBookmarks.size > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex gap-2"
+                >
+                  <Button onClick={handleBulkAddToReading} variant="outline" size="sm" className="hover-lift">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Add to Reading
+                  </Button>
+                  <Button onClick={handleBulkArchive} variant="outline" size="sm" className="hover-lift">
+                    Archive
+                  </Button>
+                  <Button onClick={handleBulkDelete} variant="destructive" size="sm" className="hover-lift">
+                    Delete
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button 
+                onClick={() => { setEditingBookmark(null); setDialogOpen(true); }} 
+                size="lg"
+                className="bg-gradient-primary hover:shadow-glow transition-all"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add Bookmark
+              </Button>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Filters */}
-        <div className="bg-card rounded-lg p-6 space-y-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">Filters & Search</h3>
+        {/* Enhanced Filters */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="glass rounded-xl p-6 space-y-4 shadow-lg border-2 border-border/50"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+            >
+              <Filter className="h-5 w-5 text-primary" />
+            </motion.div>
+            <h3 className="font-semibold text-lg">Filters & Search</h3>
           </div>
 
           <div className="space-y-4">
@@ -499,38 +540,60 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Bookmarks Grid */}
+        {/* Bookmarks Grid with Animations */}
         {filteredBookmarks.length === 0 ? (
-          <div className="text-center py-16 bg-card rounded-lg">
-            <div className="mb-4">
-              <Plus className="h-16 w-16 mx-auto text-muted-foreground/30" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">No bookmarks found</h3>
-            <p className="text-muted-foreground mb-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-center py-20 bg-gradient-card rounded-2xl shadow-lg border border-border/50"
+          >
+            <motion.div 
+              className="mb-6"
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Plus className="h-20 w-20 mx-auto text-primary/30" />
+            </motion.div>
+            <h3 className="text-2xl font-bold mb-3 text-gradient-primary">No bookmarks found</h3>
+            <p className="text-muted-foreground mb-8 text-lg max-w-md mx-auto">
               {bookmarks.length === 0
-                ? "Click 'Add New Bookmark' to get started!"
+                ? "Start your collection by adding your first bookmark!"
                 : "Try adjusting your filters or search query"}
             </p>
             {bookmarks.length === 0 && (
-              <Button onClick={() => { setEditingBookmark(null); setDialogOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Bookmark
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  onClick={() => { setEditingBookmark(null); setDialogOpen(true); }}
+                  size="lg"
+                  className="bg-gradient-primary hover:shadow-glow-strong transition-all"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Add Your First Bookmark
+                </Button>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         ) : (
-          <div className="grid gap-4">
-            {filteredBookmarks.map((bookmark) => (
-              <div key={bookmark.id} className="flex items-start gap-3">
-                <Checkbox
-                  checked={selectedBookmarks.has(bookmark.id)}
-                  onCheckedChange={() => toggleSelectBookmark(bookmark.id)}
-                  className="mt-6"
-                />
-                <div className="flex-1">
-                  <BookmarkCard
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="grid gap-4"
+          >
+            <AnimatePresence mode="popLayout">
+              {filteredBookmarks.map((bookmark, index) => (
+                <motion.div 
+                  key={bookmark.id}
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <AnimatedBookmarkCard
                     bookmark={bookmark}
                     onEdit={(b) => {
                       setEditingBookmark(b);
@@ -540,13 +603,16 @@ export default function Dashboard() {
                     onToggleReading={handleToggleReading}
                     onToggleFavorite={handleToggleFavorite}
                     onToggleArchive={handleToggleArchive}
+                    index={index}
+                    isSelected={selectedBookmarks.has(bookmark.id)}
+                    onToggleSelect={toggleSelectBookmark}
                   />
-                </div>
-              </div>
-            ))}
-          </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
       <BookmarkDialog
         open={dialogOpen}
