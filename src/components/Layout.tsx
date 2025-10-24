@@ -1,9 +1,17 @@
-import { ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { ReactNode, useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
-import { BookmarkPlus, LogOut, List, User } from "lucide-react";
+import { BookmarkPlus, List, BookOpen, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,16 +19,37 @@ interface LayoutProps {
 }
 
 export const Layout = ({ children, userEmail }: LayoutProps) => {
-  const navigate = useNavigate();
+  const [profile, setProfile] = useState<any>(null);
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error("Error signing out");
-      return;
+  useEffect(() => {
+    if (userEmail) {
+      loadProfile();
     }
-    toast.success("Signed out successfully");
-    navigate("/auth");
+  }, [userEmail]);
+
+  const loadProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profileData?.avatar_url && !profileData.avatar_url.startsWith("http")) {
+        const { data: signedUrlData } = await supabase.storage
+          .from("avatars")
+          .createSignedUrl(profileData.avatar_url, 3600);
+        
+        setProfile({ ...profileData, avatar_url: signedUrlData?.signedUrl || "" });
+      } else {
+        setProfile(profileData);
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    }
   };
 
   return (
@@ -37,7 +66,7 @@ export const Layout = ({ children, userEmail }: LayoutProps) => {
               </h1>
             </Link>
 
-            <nav className="flex items-center gap-4">
+            <nav className="flex items-center gap-2">
               <Link to="/">
                 <Button variant="ghost" size="sm" className="relative group">
                   <List className="h-4 w-4 mr-2" />
@@ -47,26 +76,52 @@ export const Layout = ({ children, userEmail }: LayoutProps) => {
               </Link>
               <Link to="/reading-list">
                 <Button variant="ghost" size="sm" className="relative group">
-                  <BookmarkPlus className="h-4 w-4 mr-2" />
+                  <BookOpen className="h-4 w-4 mr-2" />
                   Reading List
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
                 </Button>
               </Link>
-              <Link to="/profile">
+              <Link to="/docs">
                 <Button variant="ghost" size="sm" className="relative group">
-                  <User className="h-4 w-4 mr-2" />
-                  Profile
+                  <BookmarkPlus className="h-4 w-4 mr-2" />
+                  Docs
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
                 </Button>
               </Link>
               
               {userEmail && (
-                <div className="flex items-center gap-3 ml-4 pl-4 border-l">
-                  <Button variant="outline" size="sm" onClick={handleLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
-                  </Button>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="relative ml-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={profile?.avatar_url} />
+                        <AvatarFallback className="text-xs bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                          {profile?.display_name?.[0] || userEmail?.[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium">{profile?.display_name || "User"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile" className="cursor-pointer w-full">
+                        Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings" className="cursor-pointer w-full">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </nav>
           </div>
